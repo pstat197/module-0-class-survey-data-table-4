@@ -1,0 +1,143 @@
+---
+title: "Class Survey Code"
+author: "Aidan Frazier"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(GGally)
+
+
+# retrieve class survey data
+url <- 'https://raw.githubusercontent.com/pstat197/pstat197a/main/materials/labs/lab2-tidyverse/data/'
+
+background <- paste(url, 'background-clean.csv', sep = '') %>%
+  read_csv()
+
+interest <- paste(url, 'interest-clean.csv', sep = '') %>%
+  read_csv()
+
+metadata <- paste(url, 'survey-metadata.csv', sep = '') %>%
+  read_csv()
+```
+
+
+
+
+
+```{r}
+merged <- merged %>%
+  mutate(
+    updv_bucket = case_when(
+      str_detect(updv.num, "0\\s*-\\s*2") ~ "0–2",
+      str_detect(updv.num, "3\\s*-\\s*5") ~ "3–5",
+      str_detect(updv.num, "6\\s*-\\s*8") ~ "6–8",
+      str_detect(updv.num, "9\\s*\\+")   ~ "9+",
+      TRUE ~ updv.num
+    ),
+    updv_bucket = factor(updv_bucket, levels = c("0–2","3–5","6–8","9+"))
+  )
+
+course_cols <- names(merged) %>% stringr::str_subset("^(PSTAT|CS|ECON|LING)\\d+$")
+
+merged <- merged %>%
+  mutate(
+    num_courses   = rowSums(across(all_of(course_cols), ~ replace_na(.x, 0)), na.rm = TRUE),
+    pstat_courses = rowSums(across(starts_with("PSTAT"), ~ replace_na(.x, 0)), na.rm = TRUE),
+    cs_courses    = rowSums(across(starts_with("CS"),    ~ replace_na(.x, 0)), na.rm = TRUE),
+    econ_courses  = rowSums(across(starts_with("ECON"),  ~ replace_na(.x, 0)), na.rm = TRUE),
+    ling_courses  = rowSums(across(starts_with("LING"),  ~ replace_na(.x, 0)), na.rm = TRUE)
+  )
+
+# 3) Bin total courses into the SAME intervals as upper-division buckets -
+# breaks: 0–2, 3–5, 6–8, 9+
+merged <- merged %>%
+  mutate(
+    total_bucket = cut(
+      num_courses,
+      breaks = c(-Inf, 2, 5, 8, Inf),
+      labels = c("0–2","3–5","6–8","9+"),
+      include.lowest = TRUE, right = TRUE
+    ),
+    total_bucket = factor(total_bucket, levels = c("0–2","3–5","6–8","9+"))
+  )
+
+# 4) Ensure proficiency order for stacks (beg -> int -> adv) ------------
+merged <- merged %>%
+  mutate(
+    stat.prof = factor(stat.prof, levels = c("beg","int","adv")),
+    prog.prof = factor(prog.prof, levels = c("beg","int","adv")),
+    math.prof = factor(math.prof, levels = c("beg","int","adv"))
+  )
+
+
+# (A) Scatter: total courses vs comfort ratings (JITTER ONLY)
+ratings_long <- merged %>%
+  pivot_longer(c(`stat.comf`,`prog.comf`,`math.comf`),
+               names_to = "Field", values_to = "Rating")
+
+ggplot(ratings_long, aes(x = num_courses, y = Rating)) +
+  geom_jitter(width = 0.25, height = 0.1, size = 2, alpha = 0.7) +
+  facet_wrap(~ Field, nrow = 1) +
+  labs(title = "Courses Taken vs Comfort Ratings (Jitter Only)",
+       x = "Total number of courses taken (sum of 0/1 course flags)",
+       y = "Comfort rating (1–5)") +
+  theme_minimal()
+
+# (B) Dept-specific scatter (JITTER ONLY)
+dept_plots_df <- dplyr::bind_rows(
+  merged %>% transmute(x = pstat_courses, y = `stat.comf`, lab = "PSTAT courses vs Stat comfort"),
+  merged %>% transmute(x = cs_courses,    y = `prog.comf`, lab = "CS courses vs Prog comfort")
+)
+
+ggplot(dept_plots_df, aes(x = x, y = y)) +
+  geom_jitter(width = 0.25, height = 0.1, size = 2, alpha = 0.7) +
+  facet_wrap(~ lab, scales = "free_x") +
+  labs(title = "Department Course Counts vs Matching Comfort Ratings (Jitter Only)",
+       x = "Courses in department", y = "Comfort rating (1–5)") +
+  theme_minimal()
+
+
+# Heatmap of counts (and percentages) across the two bucketings
+rel_df <- merged %>%
+  count(total_bucket, updv_bucket, name = "n") %>%
+  group_by(total_bucket) %>%
+  mutate(pct_within_total = n / sum(n)) %>%
+  ungroup()
+
+ggplot(rel_df, aes(x = total_bucket, y = updv_bucket, fill = n)) +
+  geom_tile() +
+  geom_text(aes(label = paste0(n, "\n", scales::percent(pct_within_total, accuracy = 1))), size = 3) +
+  scale_fill_continuous(name = "Students") +
+  labs(title = "Relationship: Total-Course Buckets vs Upper-Division Buckets",
+       x = "Total-course bucket (from summed course flags)",
+       y = "Upper-division bucket (from updv.num)") +
+  theme_minimal()
+
+
+
+# (C) Proficiency stacks by TOTAL-COURSE buckets (beg bottom -> adv top)
+prof_long <- merged %>%
+  pivot_longer(c(stat.prof, prog.prof, math.prof),
+               names_to = "Field", values_to = "Proficiency") %>%
+  mutate(Proficiency = factor(Proficiency, levels = c("adv","int","beg")))
+
+ggplot(prof_long, aes(x = total_bucket, fill = Proficiency)) +
+  geom_bar(position = "fill") +
+  facet_wrap(~ Field) +
+  scale_fill_manual(values = c("beg" = "skyblue", "int" = "steelblue", "adv" = "darkblue")) +
+  scale_y_continuous(labels = scales::percent) +
+  coord_flip() +
+  labs(title = "Proficiency Distribution Across Total-Course Buckets",
+       x = "Total-course bucket (0–2, 3–5, 6–8, 9+)", y = "Proportion") +
+  theme_minimal()
+
+
+```
+
