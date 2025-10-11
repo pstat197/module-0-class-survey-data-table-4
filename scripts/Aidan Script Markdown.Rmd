@@ -141,3 +141,81 @@ ggplot(prof_long, aes(x = total_bucket, fill = Proficiency)) +
 
 ```
 
+```{r}
+# 1) Select ONLY true course-flag columns: DEPT + digits
+course_cols <- names(merged) %>% stringr::str_subset("^(PSTAT|CS|ECON|LING)\\d+$")
+
+# 2) Convert to a 0/1 matrix: any nonzero/TRUE/"yes" => 1
+course_mat_bin <- merged %>%
+  transmute(across(all_of(course_cols), ~ {
+    v <- suppressWarnings(as.numeric(.x))
+    v <- dplyr::coalesce(v, 0)
+    as.integer(v > 0)
+  }))
+
+# 3) Recompute totals and per-department counts from the binary matrix
+course_cols_pstat <- course_cols %>% stringr::str_subset("^PSTAT\\d+$")
+course_cols_cs    <- course_cols %>% stringr::str_subset("^CS\\d+$")
+course_cols_econ  <- course_cols %>% stringr::str_subset("^ECON\\d+$")
+course_cols_ling  <- course_cols %>% stringr::str_subset("^LING\\d+$")
+
+merged <- merged %>%
+  mutate(
+    num_courses   = rowSums(course_mat_bin[course_cols],         na.rm = TRUE),
+    pstat_courses = if (length(course_cols_pstat)) rowSums(course_mat_bin[course_cols_pstat], na.rm = TRUE) else 0L,
+    cs_courses    = if (length(course_cols_cs))    rowSums(course_mat_bin[course_cols_cs],    na.rm = TRUE) else 0L,
+    econ_courses  = if (length(course_cols_econ))  rowSums(course_mat_bin[course_cols_econ],  na.rm = TRUE) else 0L,
+    ling_courses  = if (length(course_cols_ling))  rowSums(course_mat_bin[course_cols_ling],  na.rm = TRUE) else 0L
+  )
+
+
+
+
+
+dept_plots_df <- dplyr::bind_rows(
+  merged %>% transmute(x = pstat_courses, y = `stat.comf`, lab = "PSTAT courses vs Stat comfort"),
+  merged %>% transmute(x = cs_courses,    y = `prog.comf`, lab = "CS courses vs Prog comfort")
+)
+
+ggplot(dept_plots_df, aes(x = x, y = y)) +
+  geom_jitter(width = 0.25, height = 0.1, size = 2, alpha = 0.7) +
+  facet_wrap(~ lab, scales = "free_x") +
+  labs(title = "Department Course Counts vs Matching Comfort Ratings (Jitter Only)",
+       x = "Courses in department", y = "Comfort rating (1–5)") +
+  theme_minimal()
+```
+
+```{r}
+merged <- merged %>%
+  mutate(
+    updv_bucket = case_when(
+      str_detect(updv.num, "0\\s*-\\s*2") ~ "0–2",
+      str_detect(updv.num, "3\\s*-\\s*5") ~ "3–5",
+      str_detect(updv.num, "6\\s*-\\s*8") ~ "6–8",
+      str_detect(updv.num, "9\\s*\\+")   ~ "9+",
+      TRUE ~ NA_character_
+    ),
+    updv_bucket = factor(updv_bucket, levels = c("0–2","3–5","6–8","9+"))
+  )
+
+# Long form comfort ratings
+ratings_updv <- merged %>%
+  pivot_longer(c(stat.comf, prog.comf, math.comf),
+               names_to = "Field", values_to = "Rating")
+
+# Plot: upper-division bucket vs comfort (jitter only, no fit lines)
+ggplot(ratings_updv, aes(x = updv_bucket, y = Rating)) +
+  geom_jitter(width = 0.15, height = 0.1, alpha = 0.7, size = 2) +
+  facet_wrap(~ Field, nrow = 1) +
+  scale_x_discrete(drop = FALSE) +
+  labs(title = "Upper-Division Buckets (from updv.num) vs Comfort Ratings",
+       x = "Upper-division bucket (0–2, 3–5, 6–8, 9+)",
+       y = "Comfort rating (1–5)") +
+  theme_minimal()
+```
+
+
+
+
+
+# WE need to decide through what Oscar concludes if I should compare total or upper div counts to comf or prof
