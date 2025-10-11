@@ -40,3 +40,5 @@ vignettes/*.pdf
 .Renviron
 
 .venv/
+# As asked by Slides
+.DS_Store
