@@ -12,7 +12,7 @@ trim_fn <- function(x){
   return(x)
 }
 
-# read in and preprocess data
+# read in and preproc ess data
 asd <- read_csv(url) %>%
   select(-ados) %>%
   # log transform
@@ -22,12 +22,15 @@ asd <- read_csv(url) %>%
   # trim outliers
   mutate(across(.cols = -group, trim_fn))
 
+head(  x <- asd %>% filter(group == 'TD') %>% pull(51))
+
 #action 1
 
 n_tests <- 50
 rslt <- tibble(protein = colnames(asd)[2:(n_tests + 1)],
                p = NA,
                diff = NA)
+
 for(i in 1:n_tests){
   x <- asd %>% filter(group == 'ASD') %>% pull(i + 1)
   y <- asd %>% filter(group == 'TD') %>% pull(i + 1)
@@ -35,4 +38,28 @@ for(i in 1:n_tests){
   rslt$diff <- tt$estimate[[1]] - tt$estimate[[2]]
 }
 
+rslt
 
+# action 2
+
+n_tests <- 50
+
+tt_fn <- function(i){
+  x <- asd %>% filter(group == "ASD") %>% pull(i + 1)
+  y <- asd %>% filter(group == "TD")  %>% pull(i + 1)
+  tt <- t.test(x, y)
+  
+  c(
+    diff = tt$estimate[1] - tt$estimate[2],
+    se   = tt$stderr
+  )
+}
+
+rslt <- sapply(1:n_tests, tt_fn)
+
+rslt <- rslt %>%
+  t() %>%
+  as_tibble() %>%
+  mutate(protein = colnames(asd)[2:(n_tests + 1)], .before = 1)
+
+rslt
