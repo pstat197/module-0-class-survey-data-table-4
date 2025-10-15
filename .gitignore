@@ -42,3 +42,11 @@ vignettes/*.pdf
 .venv/
 # As asked by Slides
 .DS_Store
+
+# Test notebook
+test_nb.ipynb
+
+# Python / virtualenv
+.venv/
+__pycache__/
+.env
