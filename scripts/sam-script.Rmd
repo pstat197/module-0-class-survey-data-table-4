@@ -1,4 +1,14 @@
+---
+title: "Week 2 report Sam portion"
+author: "Sam Caruthers"
+date: "`r format(Sys.Date(), '%m/%d/%y')`"
+output:
+  pdf_document: default
+  html_document: default
+---
 
+
+# Looking at Language, preferences as it relates to domain and research interests. 
 ```{r}
 library(readr)
 library(dplyr)
@@ -10,8 +20,8 @@ library(stringr)
 ```{r}
 
 # ---- 1) Load + normalize column names ----
-df <- read_csv("/Users/scaruthers/group-sandbox-table-4-1/module-0-class-survey-data-table-4/data/merged-clean.csv")
-
+#df <- read_csv("/Users/scaruthers/group-sandbox-table-4-1/module-0-class-survey-data-table-4/data/merged-clean.csv")
+df <- read_csv("/Users/scaruthers/Downloads/merged-clean.csv")
 # Create canonical columns if the source uses variants
 # (these if-blocks are safe no-ops if the target already exists)
 if (!"Language" %in% names(df) && "lang" %in% names(df))   df$Language <- df$lang
