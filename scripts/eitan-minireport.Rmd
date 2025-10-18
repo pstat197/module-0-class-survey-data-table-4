@@ -1,0 +1,159 @@
+---
+
+title: "Eitan Mini-report: merge background + interest data and checking course–interest alignment"
+author: "Eitan Boaz"
+output:
+html_document:
+toc: true
+toc_float: true
+number_sections: false
+----------------------
+
+
+## Merge inputs
+
+```{r}
+background <- read.csv("./data/background-clean.csv")
+interest   <- read.csv("./data/interest-clean.csv")
+
+merged_data <- dplyr::inner_join(background, interest, by = "response_id")
+
+removed_background <- nrow(background) - nrow(merged_data)
+removed_interest   <- nrow(interest)   - nrow(merged_data)
+
+cat("Merged dataset created.
+")
+cat("Rows in background:", nrow(background), "
+")
+cat("Rows in interest:",   nrow(interest),   "
+")
+cat("Rows after merge:",   nrow(merged_data), "
+")
+cat("Removed from background:", removed_background, "
+")
+cat("Removed from interest:",   removed_interest,   "
+
+")
+
+cat("Summary of merged data:
+")
+print(summary(merged_data))
+
+write.csv(merged_data, "./data/merged-clean.csv", row.names = FALSE)
+```
+
+This chunk reads both files, inner‑joins on `response_id`, reports how many rows were kept/dropped, prints a quick summary, and saves the merged CSV for later steps.
+
+This was needed to be done in the beginning, where a lot of the bits later in the section and a lot of the reports need to correlate things between the two datasets. So this join was the key to allow a lot of this analysis to happen.
+
+## Read the merged file and normalize interest text
+
+Now we swap to `readr::read_csv` (it’s a bit stricter and faster) and clean up the free‑text `area` column that lists interests separated by semicolons.
+
+```{r}
+CSV <- "./data/merged-clean.csv"
+df  <- readr::read_csv(CSV)
+```
+
+I lowercased and trim whitespace so that things like "Machine Learning" and "machine  learning" become the same. Then I split the semicolon list into long form: one row per person–interest pair.
+
+```{r}
+canon <- \(x) x |> stringr::str_to_lower() |> stringr::str_squish()
+
+int_long <- df %>%
+  mutate(row_id = row_number()) %>%
+  separate_rows(area, sep = ";") %>%
+  mutate(area = canon(area)) %>%
+  filter(area != "") %>%
+  distinct(row_id, area)
+```
+
+## Top interests overall
+
+Count the most common interests and plot a bar chart. 
+
+```{r}
+# how many to show
+top_n <- 10
+
+# compute top interests
+top_interests <- int_long %>%
+  count(area, sort = TRUE) %>%
+  slice_head(n = top_n)
+
+# plot
+library(ggplot2)
+
+ggplot(top_interests, aes(x = reorder(area, n), y = n)) +
+  geom_col() +
+  coord_flip() +
+  labs(title = "Top interests (overall)", x = NULL, y = "Count")
+```
+
+can add analysis here
+
+## Pick a few courses and binarize them
+
+Now I focus on a small, fixed set of courses that feel most relevant and likely to show stronger alignment with certain interests. I personally had a bit of a problem with the data, so it worked when I coerced their columns to strict 0/1 flags.
+
+```r
+course_df <- df %>%
+  mutate(row_id = row_number()) %>%
+  select(row_id, `PSTAT120`, CS16, PSTAT131, CS130) %>%
+  mutate(across(-row_id, ~{
+    v <- suppressWarnings(as.numeric(.x))
+    v[is.na(v)] <- 0
+    as.integer(pmin(1, pmax(0, round(v))))
+  }))
+
+# exact courses to show and in this order
+courses_to_show <- c("PSTAT120", "CS16", "PSTAT131", "CS130")
+```
+
+This creates one column per interest with 0/1 flags per student.
+
+```r
+int_wide_small <- tibble(row_id = seq_len(nrow(df))) %>%
+  left_join(
+    int_long %>%
+      filter(area %in% top_interests$area) %>%
+      mutate(val = 1L) %>%
+      pivot_wider(names_from = area, values_from = val, values_fill = 0L),
+    by = "row_id"
+  ) %>%
+  mutate(across(-row_id, ~ replace_na(.x, 0L)))
+```
+
+For each course, I compute the share of students who selected each interest among takers and non‑takers. 
+
+```r
+rates <- purrr::map_dfr(courses_to_show, function(crs) {
+  course_df %>%
+    select(row_id, took = all_of(crs)) %>%
+    left_join(int_wide_small, by = "row_id") %>%
+    mutate(group = if_else(took == 1L, "took", "didn't")) %>%
+    select(-row_id, -took) %>%
+    pivot_longer(-group, names_to = "interest", values_to = "has_interest") %>%
+    group_by(group, interest) %>%
+    summarise(pct = mean(has_interest), .groups = "drop") %>%
+    mutate(course = crs)
+})
+```
+
+## Plot: do courses line up with interests?
+
+```r
+ggplot(rates, aes(x = interest, y = pct, fill = group)) +
+  geom_col(position = "dodge") +
+  facet_wrap(~ course, scales = "free_x") +
+  scale_y_continuous(labels = scales::percent_format()) +
+  coord_flip() +
+  labs(
+    title = "Do courses line up with interests?",
+    subtitle = "Share selecting each interest, among students who took vs didn't take the course",
+    x = NULL, y = "% of students", fill = NULL
+  ) +
+  theme(legend.position = "top")
+```
+
+can add analysis here
