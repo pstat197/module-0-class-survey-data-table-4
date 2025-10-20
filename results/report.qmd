@@ -14,14 +14,9 @@ execute:
   cache: true
 ---
 
-```{r}
-# load any other packages and read data here
-library(tidyverse)
-```
-
 ## Executive summary
 
-Write a one-paragraph abstract summarizing what you did and your findings. It need not be comprehensive; try to highlight the most important or interesting outcomes.
+This project analyzed survey data from 60 students enrolled in PSTAT197A to explore how coursework, programming language preference, and self-reported comfort and proficiency relate to one another. Our findings show that most students prefer Python, particularly those interested in industry-focused projects, while R remains more common among students pursuing statistically oriented or research-based paths. Course-level analysis revealed that students who completed CS130 (Data Structures and Algorithms) and PSTAT131 (Machine Learning) tend to show stronger interests in applied topics such as deep learning and predictive modeling, whereas PSTAT120 (Statistics) students focus more on inference and theory. We also found that greater depth in upper-division coursework is associated with higher comfort and proficiency, especially in statistics. Finally, a significant positive correlation between comfort and proficiency across all subjects confirms that students who feel more skilled in a topic also report greater confidence in it. Overall, the analysis highlights meaningful links between curriculum choices, technical interests, and perceived ability within the data science student community.
 
 ## Data description
 
@@ -34,6 +29,8 @@ Our goal in the analysis of the class survey data was to explore the preference 
 1.  Does programming language preference (Python or R) relate to the type of projects a student would want to work on (Lab or Industry) as well as their desired field of interest?
 
 2.  How do the courses a student takes within a subject affect their Statistical, Math, and Programming comfortability/proficiency?
+
+3.  Is there a correlation between comfort level and proficiency level for each skill?
 
 ## Findings
 
@@ -55,6 +52,14 @@ The second plot considers deep learning and analysis/classification of images as
 |-------------------------------------------|-------------------------------------------|
 | ![](images/Domain of Interest (1)-01.png) | ![](images/Domain of Interest (2)-01.png) |
 
+In addition to this, we also investigated the most common interests reported by students as well as by classes taken. From this analysis, we created the following 2 plots:
+
+![](images/Interests Counts-01.png)
+
+Students who completed CS130 and PSTAT131 show stronger interests in applied topics such as deep learning, predictive modeling, and model deployment, indicating these courses attract technically oriented learners. In contrast, PSTAT120 students emphasize statistical modeling and inference, reflecting a more analytical focus. CS16 students show balanced interests across areas, suggesting it serves as an early, general foundation before specialization.
+
+![](images/Interests Chart-01.png)
+
 Lastly, we also decided to look at language preference by classes taken. It turns out most people in the class (all but 3) have taken 2 Computer Science classes, so I decided to break it up by PSTAT class. We found this interesting because for the most part, UCSB PSTAT Classes are taught in R. That intuition suggests that the more PSTAT classes you take the more you would prefer R. However, there are several possibilities that can contribute to this result. We saw previously people mainly want to do a Python project in the industry, so it can also be true that the more PSTAT classes you take the more you are thinking about getting a project in the industry. It is also true that in general students may see Python as a future career skill.
 
 ![](images/Programming Languages by Courses.png)
@@ -69,13 +74,15 @@ To gain a basis understanding of the relationship between total courses and uppe
 
 In plot 2 for the Stat/Prog/Math, each total-course bucket is split into beg/int/adv in relation to proficiency which were marked on the intake forms. In the plot we can see that as total courses increase, beg shrinks and adv grows in all three fields, this gradient is most apparent in Statistics, moderate in Math, and weaker in Programming (where many students are already “adv/int” at the low totals). This plot validates the idea that the more coursework which is done the more likely someone is to believe that they have a higher proficiency in the respective fields.
 
-## ![](images/Proficiency across Total.png)
-
 Plot 3 follows the exact same ideas and principles as plot 2; however, this is using the number of upper divisions one has taken instead of the total courses which could be checked. There is a different result found though. While we observe similar results to plot 2 they are far less dramatic and this could be for numerous reasons, but it is more likely that with the removal of the inclusion of specific class which could help in proficiency that one may put a lower score. Many factors could cause for this difference. But, we can conclude that upper division counts show better indications of depth in the data set.
 
-![](images/Proficiency Across UD.png)
+|                                             |                                          |
+|---------------------------------------------|------------------------------------------|
+| ![](images/Proficiency across Total-01.png) | ![](images/Proficiency Across UD-01.png) |
 
-In the below plots 4 and 5 we are measuring the same thing within both, however they just provided different visuals for us to analyze. Now my group has deduced that comfort rating is a better indicator of ability within respective fields. In these plots we additionally have not measured math because there is no inclusion of math department courses so we can not run this analysis on math comfort rating.\
+In the below plots 4 and 5 we are measuring the same thing within both, however they just provided different visuals for us to analyze. Now my group has deduced that comfort rating is a better indicator of ability within respective fields. In these plots we additionally have not measured math because there is no inclusion of math department courses so we can not run this analysis on math comfort rating.
+
+\
 In these plots of courses which have been taken in CS and PSTAT that were able to be checked off in the intake survey and plotted them against ones comfort rating in programming and statistics respectively. We observe that the plots model: student department-specific counts (x) vs matching comfort (y), faceted for CS→Prog and PSTAT→Stat. Additionally we observe that both slopes are positive. The PSTAT→Stat slope is steeper: more PSTAT courses is closely associated with higher Stat comfort. The CS→Prog slope is positive but flatter. Now from these plots we can conclude that more within-subject courses implies higher comfort is clearly true for Statistics and present but weaker for Programming, likely because programming comfort comes from PSTAT/R work, prior experience, and self-study—not just CS courses.
 
 Specifically within plot 5 we can see in the comparison of CS courses with programming that there is a heavy concentration around x=1 with y of about 3–4. While in PSTAT courses relation with statistical comfort, the mass sits at x of about 4–6 with y=4–5, plus a thin tail at higher x with y=5.
@@ -99,3 +106,27 @@ In plot 8 we see that for each field, UD buckets are structured into comfort lev
 ------------------------------------------------------------------------
 
 ### Question 3:
+
+Before we began analyzing the relationship between comfort level and proficiency level for Programming, Statistics, and Math, we first created plots to visualize the current standing of the students. The following plots show the respective levels and counts for each category.
+
+|                                     |                                    |                                 |
+|-------------------------------------|------------------------------------|---------------------------------|
+| ![](images/Programming Comfort.png) | ![](images/Statistics Comfort.png) | ![](images/Math Comfort-01.png) |
+
+|                           |                              |                           |
+|---------------------------|------------------------------|---------------------------|
+| ![](images/Prog Prof.png) | ![](images/Stat Prof-01.png) | ![](images/Math Prof.png) |
+
+Next, we calculated the slope, intercept, correlation coefficient (r-value), p-value, and standard error for each of the categories and plotted them to interpret the results. Our analysis shows positive correlations between proficiency and comfort in all subjects. Programming, math, and statistics had slopes of 0.61, 0.55, and 0.8 respectively. These slopes mean that for every unit increase in reported proficiency, there is an expected x unit increase in reported comfort.
+
+We then set up the following hypotheses:
+
+-   H_0: There is no relationship between reported proficiency and reported comfort in a given subject.
+
+-   H_A: There exists a relationship between reported proficiency and reported comfort in a given subject.
+
+Correlations coefficients for programming, math, and statistics were 0.43, 0.43, and 0.6. These coefficients mean that there is a moderate positive correlation between the reported proficiency and reported comfort in a given subject. P-values for these regression lines range from 0.0015 to 0.0000018, showing statistically significant correlations at alpha values well below a = 0.01. This means we can reject the null hypothesis, and conclude that there exists a statistically significant positive correlation between the reported proficiency and reported comfort in a given subject at alpha = 0.01.
+
+|                                 |                                 |                                 |
+|---------------------------------|---------------------------------|---------------------------------|
+| ![](images/Prog Comparison.png) | ![](images/Stat Comparison.png) | ![](images/Math Comparison.png) |
